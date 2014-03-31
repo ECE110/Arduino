@@ -1,0 +1,39 @@
+void setup() {
+  Serial.begin(9600);
+}
+// Initializing variables
+int Q1 = 0; int Q2 = 0; int Q3 = 0; int Q4 = 0;  int QTI; int R; int TIE= 0; int non = 0; int k; int N; int Diff; int Z=0; //int Q5;
+ byte BSeg = B0; byte SegCtrl; byte mask; int pin;//initialize the segment variables
+
+
+void loop() {
+//Controlling LED through pins 11-8
+  char ch = 0;            //stuff for troubleshooting
+  if (Serial.available()) {
+  ch = Serial.read();
+  }
+  switch (ch) 
+  {
+    case 1:
+    BSeg = B0110000;
+    case 2:
+    BSeg = B1101101;
+    case 3:
+    BSeg = B1111001;
+    case 4:
+    BSeg = B0110011;
+    case 5:
+    BSeg = B1011011;
+  }
+  for (int count; count <=6; count++) { //for going through and turning on each segment, NOT for each digit
+    mask = byte(2^count);  //mask changes as needed with each iteration
+    SegCtrl = BSeg & mask; //isolate out the value needed
+    if (SegCtrl == mask) 
+    {
+      pin = count+5; //remember to change this as necessary
+       digitalWrite(pin,HIGH); //figure out which pin corresponds to which segment
+       Serial.print('pin'+pin+'lights up'); //prints out the expected behavior for troubleshooting
+    }
+  }
+  
+}
