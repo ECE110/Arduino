@@ -1,0 +1,16 @@
+void setup() {
+  Serial.begin(9600);
+  pinMode(7,OUTPUT);
+  pinMode(8,OUTPUT);
+  pinMode(9,OUTPUT);
+  pinMode(10,OUTPUT);
+  pinMode(11,OUTPUT);
+}
+
+void loop() {
+  Diff = ch;
+  for (int count = 1; count <=Diff; count++) {
+    pin = count+7;
+    digitalWrite(pin, HIGH);
+  }
+}
