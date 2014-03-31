@@ -1,0 +1,213 @@
+#include <Servo.h>                           // Include servo library
+ 
+Servo servoLeft;                             // Declare left servo
+Servo servoRight;                             // Declare left servo
+
+void setup()                                 // Built in initialization block
+{
+  Serial.begin(9600);
+  servoLeft.attach(11);                      // Attach left signal to pin 13
+  //servoLeft.writeMicroseconds(1500);         // 1.3 ms full speed clockwise
+servoRight.attach(10);                      // Attach left signal to pin 12
+ // servoRight.writeMicroseconds(1500);         // 1.3 ms full speed clockwise
+    //setting up pins for 7 segment display
+//    pinMode(11, OUTPUT); //red, ones
+//    pinMode(10, OUTPUT); //green, twos
+    pinMode(9, OUTPUT); //yellow, fours
+/*  digitalWrite(11,HIGH);
+  delay(1000);
+  digitalWrite(11,LOW);
+  delay(1000);
+  digitalWrite(10,HIGH);
+  delay(1000);
+  digitalWrite(10,LOW);
+  delay(1000);
+  digitalWrite(9,HIGH);
+  delay(1000);
+  digitalWrite(9,LOW);*/
+}  
+
+ long RCTime(int sensorIn){       // Determine decay time, used in line following and sensing
+   long duration = 0;
+   pinMode(sensorIn, OUTPUT);     // Make pin OUTPUT
+   digitalWrite(sensorIn, HIGH);  // Pin HIGH (discharge capacitor)
+   delay(1);                      // Wait 1ms
+   pinMode(sensorIn, INPUT);      // Make pin INPUT
+   digitalWrite(sensorIn, LOW);   // Turn off internal pullups
+   while(digitalRead(sensorIn)){  // Wait for pin to go LOW
+      duration++;
+   }
+   return duration;
+}
+// Initializing variables
+int Q1 = 0; int Q2 = 0; int Q3 = 0; int Q4 = 0;  int QTI; int R; int TIE= 0; int non = 0; int k; int N; int Diff; int Z=0; //int Q5;
+byte BDiff; byte REDCtrl = B0; byte GRECtrl = B0; byte YELCtrl = B0; byte mask;//initialize the segment variables
+
+void loop() // Main loop auto-repeats                                                
+{
+//Interpreting sensors
+Q1=0;Q2=0;Q3=0;Q4=0;QTI=0; //Q5 =0;
+if (RCTime(2) > 30)
+{
+ Q1= 1;
+}
+
+if (RCTime(3) > 30)
+{
+ Q2 = 10;
+}
+
+ if  (RCTime(4) > 30)
+{
+ Q3 = 100;
+}
+
+ if (RCTime(5) > 30)
+{
+ Q4 = 1000;
+}
+//Serial.println(RCTime(6));
+
+//Finding TIE fighters and other craft
+Z = TIE + non;
+if (Z < 5)
+{
+if (RCTime(6) <600)      
+ {
+ R=1;//side sensors sees white
+ k=0; //reset k to 0 to add another object to the count 
+ }
+ else if (k == 0 && R == 1)
+ {
+     TIE = TIE+1; //add to the count of imperial fighters
+    Diff = TIE - non; //find the line order based on difference between TIE fighters and other craft
+     Serial.println("TIE"); //Serial prints to see whether the code works
+      Serial.println(RCTime(6));
+    Serial.println(TIE);
+    Serial.println("Diff");
+    Serial.println(Diff);
+    k=1;
+    R=0; //R is control variable for white, N is control variable for black
+ }
+ 
+ if (RCTime(6) > 1200)
+ {
+ N=1; //side sensor sees black
+ k=0;
+ }
+ else if (k==0 && (N==1)) 
+ {                                                                                        
+    non = non+1; //add to the count of nonthreatening craft
+  Diff = TIE - non;
+    Serial.println("non");
+      Serial.println(RCTime(6));
+   Serial.println(non);
+   Serial.println("Diff");
+   Serial.println(Diff);
+   
+   k=1;
+   N=0;
+ }
+}
+
+//Controlling LED through pins 11-8
+  char ch = 0;            //stuff for troubleshooting
+  if (Serial.available()) {
+  ch = Serial.read();
+  }
+  BDiff = byte(ch);//change ch to Diff when this is done //BDiff is 8 places
+  //Serial.println(BDiff,BIN);
+  //BDiff = byte(Diff);
+  Serial.println(BDiff,BIN);
+  mask = B000001;
+  REDCtrl = BDiff & mask; //red is ones
+  if (REDCtrl == mask) 
+  {
+     digitalWrite(11,HIGH);
+     Serial.print("Red lights up."); //prints out the expected behavior for troubleshooting
+  }
+  mask = B000010;
+  GRECtrl = BDiff & mask; //Green is twos
+  if (GRECtrl == mask) 
+  {
+    digitalWrite(10,HIGH);
+    Serial.print("Green lights up.");
+  }
+  mask = B000100;
+  YELCtrl = BDiff & mask; //yellow is fours
+  if (YELCtrl == mask) 
+  {
+    digitalWrite(9,HIGH);
+    Serial.print("Yellow lights up.");
+  }
+/* for (int i=0; i <= ch; i++)
+ {
+   digitalWrite(9,HIGH);
+   delay(1000);
+   digitalWrite(9,LOW); 
+ }
+  digitalWrite(9,LOW);*/
+//Controlling servos
+
+QTI = Q1+Q2+Q3+Q4; 
+switch (QTI)
+{
+case 1: 
+//Serial.println("pivot right");
+servoLeft.writeMicroseconds(1700); 
+servoRight.writeMicroseconds(1700);
+break;
+case 10:
+ //curve right
+//Serial.println("curve right");
+servoLeft.writeMicroseconds(1700);
+servoRight.writeMicroseconds(1650); 
+break;
+case 11: // curve right
+//Serial.println("curve right");
+servoLeft.writeMicroseconds(1700);
+servoRight.writeMicroseconds(1550);
+break;
+/*case 100: 
+Serial.println("straight");
+servoLeft.writeMicroseconds(1600);
+servoRight.writeMicroseconds(1700); */
+case 110: //straight
+//Serial.println("straight");
+servoLeft.writeMicroseconds(1300);
+servoRight.writeMicroseconds(1700);
+break;
+case 100:
+ //curve left'
+// Serial.println("straight");
+//Serial.println("curve left");
+servoLeft.writeMicroseconds(1350);
+servoRight.writeMicroseconds(1300);
+break;
+case 1100: // curve left
+//Serial.println("curve left");
+servoLeft.writeMicroseconds(1450);
+servoRight.writeMicroseconds(1300);
+break;
+case 1110: // pivot left
+//Serial.println("pivot left");
+servoLeft.writeMicroseconds(1300);
+servoRight.writeMicroseconds(1300);
+break;
+case 0: //go backwards
+//Serial.println("straight");
+servoLeft.writeMicroseconds(1300);
+servoRight.writeMicroseconds(1700);
+break;
+case 1111: //go backwards
+//Serial.println("straight");
+servoLeft.writeMicroseconds(1300);
+servoRight.writeMicroseconds(1700);
+break; 
+//case 1111: // stop
+//delay(2000);
+//default:
+//delay(3000);
+}
+delay(20);
+}
