@@ -1,3 +1,4 @@
+//Not that much different except with adjusted servo speeds and serial prints for debugging
 #include <Servo.h>                           // Include servo library
  //initialize LCD display
 const int TxPin = 7;
