@@ -143,36 +143,11 @@ if (time > 1000){
           
           break;
         }
-        if ((time > (ABC)) && (TIE == 1) )
+      if (time > (ABC + TIE*BC))
         {
-        delay(AB);
           break;
         }
-      if ((time > (ABC + 2*BC)) && (TIE ==2))
-        {
-          delay(AB + BC);
-          break;
-        }
-        
-        if ((time > (ABC + 3*BC)) && (TIE == 3))
-        {
-         delay(AB+ BC + BC);
-          break;
-        }
-        
-        if ((time > (ABC + 4*BC)) && (TIE == 4))
-        {
-          delay(AB + BC + BC +BC);
-          break;
-        }
-        
-        if ((time > (ABC + 5*BC)) && (TIE == 5))
-       {
-         delay(AB +BC +BC + BC +BC);
-         break;
-       }
-        
-        
+
       }
 
     }
