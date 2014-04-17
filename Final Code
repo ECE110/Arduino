@@ -1,0 +1,225 @@
+#include <Servo.h>                            // Include servo library
+const int TxPin = 7;                          // for LCD display
+#include <SoftwareSerial.h>                   // Include SoftwareSerial library for the Xbee and LCD display
+SoftwareSerial one = SoftwareSerial(255, TxPin); // setting pins for the LCD display
+#define Rx    10			      // DOUT to pin 6
+#define Tx    11			      // DIN to pin 7
+SoftwareSerial Xbee (Rx, Tx); // setting the DOUT for the xbee to pin 10 and the DIN to pin 11
+
+Servo servoLeft;                              // Declare left servo
+Servo servoRight;                             // Declare left servo
+
+void setup()                                  // Built in initialization block
+{
+  Serial.begin(9600);
+  servoLeft.attach(12);                       // Attach left signal to pin 12
+  servoRight.attach(13);                      // Attach left signal to pin 13  
+  pinMode(TxPin, OUTPUT);                     // for the LCD display
+  digitalWrite(TxPin, HIGH);                  // for the LCD display
+}  
+
+long RCTime(int sensorIn){
+  long duration = 0;
+  pinMode(sensorIn, OUTPUT);                  // Make pin OUTPUT
+  digitalWrite(sensorIn, HIGH);               // Pin HIGH (discharge capacitor)
+  delay(1);                                   // Wait 1ms
+  pinMode(sensorIn, INPUT);                   // Make pin INPUT
+  digitalWrite(sensorIn, LOW);                // Turn off internal pullups
+  while(digitalRead(sensorIn)){               // Wait for pin to go LOW
+    duration++;
+  }
+  return duration;
+}
+                                              // Create variables
+int Q1 = 0;                                   //First QTI value, black or white
+int Q2 = 0;                                   //Second QTI value, black or white
+int Q3 = 0;                                   //Third QTI value, black or white
+int Q4 = 0;                                   //Fourth QTI value, black or white
+int QTI;                                      // A variable saying which QTI line following sensors are reading black or white
+int R;                                        //a variable used for a counter
+int TIE= 0;                                   // TIE is our place in line
+int k;                                        //a variable used for a counter
+int W= 0;                                     // number of black hashs that have been passed
+int V;                                        // a variable used for a counter
+int C;                                        // a variable used for a counter
+boolean halt= true;                           // a variable used to leave the staging area
+int incoming;                                 // the data being recieved by the Xbee
+int time;                                     // the time since the program started
+void loop()                                   // Main loop auto-repeats               
+{    
+                                              // reset the values from the QTI sensors to 0 at the start of each loop
+  Q1=0;
+  Q2=0;
+  Q3=0;
+  Q4=0;
+  QTI=0; 
+  
+  time = millis();                            // time since program started/ since the reset button was hit last
+  
+  if ((W==13-TIE))                            //arrives at its proper place in line, stops and sends signal, there are 11 hash marks and it counts one hash twice so the hash that it stops at is 13-its spot in line, example: if its spot is 1 and it coutns one of the hashes twice then is would stop at the 11th hash
+  {
+                                              //detach servomotors
+    servoLeft.detach();
+    servoRight.detach();
+
+    if ((W==13-TIE)) {                        // sends out the place in line of the next bot in line     
+      Xbee.begin(9600);
+      Xbee.print(TIE+1);
+      Serial.print(TIE);
+      delay(500);
+    }
+    
+    one.begin(9600);                          //start the LCD display to show our spot in line
+    delay(100);                               
+    one.write(12);                            // Clear             
+    one.write(17);                            // Turn backlight on
+    delay(5);                                 // Required delay
+    one.print("Spot");                        // First line
+    one.write(13);                            // Form feed
+    one.print(TIE);                           // Second line                 
+    one.write(18);                            // Turn backlight off
+
+  }
+
+
+  else if ((W==(6)) && (halt == true)) {      //arrives at main horizontal/staging area, if not the first in line it pauses and waits for the signal before going, if it is the first it exits out of this "else if" statement
+                                              //Incoming communications: when to leave for the shaft
+                                              //go back a little so that there is room for the next bot to pass
+    servoLeft.writeMicroseconds(1700); 
+    servoRight.writeMicroseconds(1300);
+    delay(500);
+    if (TIE != 1) {                           // if not first in line go into a while loop
+      while (1) {
+                                              // detach servos to stop the bot/ so it waits 
+        servoLeft.detach();
+        servoRight.detach();
+                                              // display spot in line
+        one.begin(9600);
+        one.write(12);                        // Clear             
+        one.write(17);                        // Turn backlight on
+        delay(5);                             // Required delay
+        one.print("Place in line");           // First line
+        one.write(13);                        // Form feed
+        one.print(TIE);                       // Second line
+
+        Xbee.begin(9600);                     // start Xbee so we can start sending
+        if(Xbee.available()) {                // Is data available from XBee?
+          incoming = Xbee.read();             // Read character,
+          delay(50);
+          Serial.println(incoming);           // for debugging so I can see what I am recieving
+        }
+
+        if (Xbee.read() == 48+TIE)            // when sending an integer the reciever gets 48+ the number that was sent, I think this is b/c it is converting a character to ASCII or something like that
+        {
+          Serial.println("go");               // print out "go" when it gets into this "if statement" for trouble shooting
+          break;                              // break out of the loop if I recieve a signal from the bot in front of me
+        }
+      }
+    }  
+    halt = false;                             // after broken out of the while loop halt becomes false which stops the "else if" statement from running 
+  }
+
+
+  else                                        // line following and sensing code
+  {
+                                              
+                                              //reattach servos since they were detached in the "else if" portion of the code
+    servoLeft.attach(12);
+    servoRight.attach(13);
+                                              // line following with QTIs 
+    if (RCTime(2) > 30)
+    {
+      Q1= 1;                                  // the rightmost sensor is 1 if it senses black and 0 if it senses white
+    }
+    if (RCTime(3) > 30)
+    {
+      Q2 = 10;                                // the center, right sensor is 10 if it senses black and 0 if it senses white
+    }
+    if  (RCTime(4) > 30)
+    {
+      Q3 = 100;                               // the center, left sensor is 100 if it senses black and 0 if it senses white
+    }
+    if (RCTime(5) > 30)
+    {
+      Q4 = 1000;                              // the left most sensor is 1000 if it senses black and 0 if it senses white
+    }
+
+                                              //Sensing craft
+    if (time < 8000)                          // so it doesn't continue sensing after it passes the last block
+    {
+      if (RCTime(6) <250)                     // the QTI used to count the number of white blocks 
+      {
+        R=1;                                  //side sensors sees white
+        k=0;                                  //reset k to 0 to add another object to the count 
+      }
+      else if (k == 0 && R == 1)
+      {
+        TIE = TIE+1;                          //add to the count of imperial fighters(white blocks)
+
+        Serial.println("TIE");
+        Serial.println(RCTime(6));
+        Serial.println(TIE);
+
+        k=1;                                  // resets so that it has to wait to see another block before it can add again, prevents it from continuously adding when it sees a block
+        R=0;
+      }
+    }
+
+    QTI = Q1+Q2+Q3+Q4;                       // the sum of the results from the QTI sensors
+    
+    if (QTI == 1111)                         // if all the QTI sensors see black. This is an improvized variant on binary, each of the 4 digits is either 0(white) or 1(black) with the 1000's place representing the left-most sensor and the 1's place representing the right-most sensor
+    {
+      V=1;                                   // QTI sensors see a perpendicular black line
+      C=0;                                   // reset C to 0 to add another line to the count
+    }
+    else if (C==0 && V==1)
+    {
+      W=W+1;                                 // add to the count of black lines
+      Serial.println("W");
+      Serial.println(QTI);
+      V=0;                                   // resets so it only counts once per black line
+      C=1;
+
+    } 
+    
+    switch (QTI)                             // switch case based on the QTI variable value
+    {
+    case 1:                                  // only the right-most sensor is sensing
+      servoLeft.writeMicroseconds(1700);     // sharp right turn
+      servoRight.writeMicroseconds(1700);
+      break;
+    case 10:                                // only the center-right                                        
+      servoLeft.writeMicroseconds(1650);    //curve right/ slightly less sharp right turn
+      servoRight.writeMicroseconds(1600); 
+      break;
+    case 11:                                // both right hand sensor seeing black                                         
+      servoLeft.writeMicroseconds(1570);    // moderate right turn
+      servoRight.writeMicroseconds(1550);
+      break;
+    case 110:                               //straight, both middle sensors seeing black, so when the bot is on a line
+      servoLeft.writeMicroseconds(1300);
+      servoRight.writeMicroseconds(1700);
+      break;
+    case 100:                               // when center-left sensor is seeing black, curve left
+      servoLeft.writeMicroseconds(1325);
+      servoRight.writeMicroseconds(1300);
+      break;
+    case 1100:                              // when both the leftmost sensors see black, curve left 
+      servoLeft.writeMicroseconds(1450);
+      servoRight.writeMicroseconds(1300);
+      break;
+    case 1110:                              // if it sees all but the right-most sensor as black, sharp left turn 
+      servoLeft.writeMicroseconds(1300);
+      servoRight.writeMicroseconds(1300);
+      break;
+    case 0:                                 // sees all white, go straight, this allows it to get past the white gaps in the lines
+      servoLeft.writeMicroseconds(1300);
+      servoRight.writeMicroseconds(1700);
+      break;
+    case 1111:                              // keep going straight if we reach a black hash
+      servoLeft.writeMicroseconds(1300);
+      servoRight.writeMicroseconds(1700);
+      break; 
+    }
+  }
+}
